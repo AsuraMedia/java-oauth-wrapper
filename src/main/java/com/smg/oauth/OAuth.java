@@ -3,8 +3,6 @@ package com.smg.oauth;
 
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
-import com.mashape.unirest.http.async.Callback;
-import com.mashape.unirest.http.exceptions.UnirestException;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -18,27 +16,6 @@ import java.util.*;
 public class OAuth
 {
     public Properties properties = new Properties();
-    public Callback<JsonNode> refreshCallback = new Callback<JsonNode>()
-    {
-        @Override
-        public void completed (HttpResponse<JsonNode> httpResponse)
-        {
-            System.out.println("Credentials refreshed");
-        }
-
-        @Override
-        public void failed (UnirestException e)
-        {
-            System.out.println("Failing refreshing credentials");
-        }
-
-        @Override
-        public void cancelled ()
-        {
-            System.out.println("Cancelled refreshed credentials");
-        }
-    };
-
 
     private Injector injector;
     private boolean initialized = false;
@@ -53,7 +30,7 @@ public class OAuth
         this.injector.sslVerification = sslVerification;
     }
 
-    public void setSssion (Map<String, Object> session)
+    public void setSession (Map<String, Object> session)
     {
         this.injector.session = session;
     }
@@ -71,7 +48,7 @@ public class OAuth
         {
             base = "/" + base;
         }
-        if (base.equalsIgnoreCase("/"))
+        if (base != null && base.equalsIgnoreCase("/"))
         {
             base = "";
         }
@@ -115,9 +92,8 @@ public class OAuth
 
         if (((OauthIO) this.injector.session.get("oauthio")).tokens.size() > 4)
         {
-            LinkedList<String> subList = (LinkedList<String>) ((OauthIO) this.injector.session.get("oauthio")).tokens.subList(0, 4);
 
-            ((OauthIO) this.injector.session.get("oauthio")).tokens = subList;
+            ((OauthIO) this.injector.session.get("oauthio")).tokens = (LinkedList<String>) ((OauthIO) this.injector.session.get("oauthio")).tokens.subList(0, 4);
 
         }
 
@@ -135,10 +111,8 @@ public class OAuth
             JSONObject state = new JSONObject();
             state.put("state", csrf);
 
-            String opts = "";
-
             urlToRedirect = URLEncoder.encode(urlToRedirect, "UTF-8");
-            opts = URLEncoder.encode(state.toString(), "UTF-8");
+            String opts = URLEncoder.encode(state.toString(), "UTF-8");
             location = this.injector.config.getOauthUrl() +
                     this.injector.config.getOauthdBase()
                     + "/" + provider
@@ -156,7 +130,6 @@ public class OAuth
         {
             e.printStackTrace();
         }
-
 
 
         return location;
