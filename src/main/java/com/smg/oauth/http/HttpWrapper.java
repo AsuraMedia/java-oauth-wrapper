@@ -1,15 +1,13 @@
-package com.smg.oauth;
+package com.smg.oauth.http;
 
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
-import com.mashape.unirest.http.async.Callback;
 import com.mashape.unirest.http.exceptions.UnirestException;
-import org.json.JSONObject;
+import com.smg.oauth.constants.HttpVerbs;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.Future;
 
 /**
  * Created by eduardo on 23/01/15.

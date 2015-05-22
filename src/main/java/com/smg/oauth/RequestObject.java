@@ -2,8 +2,9 @@ package com.smg.oauth;
 
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
-import com.mashape.unirest.http.async.Callback;
 import com.mashape.unirest.http.exceptions.UnirestException;
+import com.smg.oauth.constants.HttpVerbs;
+import com.smg.oauth.http.HttpWrapper;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 
@@ -11,7 +12,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.Future;
 
 /**
  * Created by eduardo on 23/01/15.
@@ -43,7 +43,7 @@ public class RequestObject
         return new JsonNode("");
     }
 
-    private HttpResponse<JsonNode> makeRequest(HttpVerbs method, String url, JSONObject body) throws UnirestException
+    private HttpResponse<JsonNode> makeRequest(HttpVerbs method, String url, JSONObject body, Map<String,Object> queryParams) throws UnirestException
     {
 
 
@@ -78,7 +78,7 @@ public class RequestObject
             return null;
         }
 
-        response = requester.makeRequest(fullUrl, method, headers, body!=null?body.toString():null,null,null);
+        response = requester.makeRequest(fullUrl, method, headers, body!=null?body.toString():null,null,queryParams);
 
         return response;
     }
@@ -111,7 +111,7 @@ public class RequestObject
 
         try
         {
-            fullUrl = this.injector.config.oauthUrl+"/auth/"+this.credentials.get("provider")+"/me";
+            fullUrl = this.injector.config.getOauthUrl()+"/auth/"+this.credentials.get("provider")+"/me";
             headers.put("oauthio", OAuthUtils.httpBuildQuery(params));
         }
 
@@ -129,12 +129,18 @@ public class RequestObject
         return response;
     }
 
+
     public HttpResponse<JsonNode> get(String url)
+    {
+        return get(url,null);
+    }
+
+    public HttpResponse<JsonNode> get(String url, Map<String,Object> queryParams)
     {
         HttpResponse<JsonNode> response = null;
         try
         {
-            response = this.makeRequest(HttpVerbs.GET,url,null);
+            response = this.makeRequest(HttpVerbs.GET,url,null,queryParams);
         }
         catch (UnirestException e)
         {
@@ -151,7 +157,7 @@ public class RequestObject
         HttpResponse<JsonNode> response = null;
         try
         {
-            response = this.makeRequest(HttpVerbs.POST,url,body);
+            response = this.makeRequest(HttpVerbs.POST,url,body,null);
         }
         catch (UnirestException e)
         {
@@ -166,7 +172,7 @@ public class RequestObject
         HttpResponse<JsonNode> response = null;
         try
         {
-            response = this.makeRequest(HttpVerbs.PUT,url,body);
+            response = this.makeRequest(HttpVerbs.PUT,url,body,null);
         }
         catch (UnirestException e)
         {
@@ -182,7 +188,7 @@ public class RequestObject
         HttpResponse<JsonNode> response = null;
         try
         {
-            response = this.makeRequest(HttpVerbs.PATCH,url,body);
+            response = this.makeRequest(HttpVerbs.PATCH,url,body,null);
         }
         catch (UnirestException e)
         {
@@ -197,7 +203,7 @@ public class RequestObject
         HttpResponse<JsonNode> response = null;
         try
         {
-            response = this.makeRequest(HttpVerbs.DELETE,url,null);
+            response = this.makeRequest(HttpVerbs.DELETE,url,null,null);
         }
         catch (UnirestException e)
         {

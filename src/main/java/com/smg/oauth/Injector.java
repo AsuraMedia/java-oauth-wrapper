@@ -1,45 +1,64 @@
 package com.smg.oauth;
 
-import java.util.Map;
+import com.smg.oauth.config.OauthConfig;
+import com.smg.oauth.http.HttpWrapper;
 
 /**
  * Created by eduardo on 23/01/15.
  */
 public class Injector
 {
-    public Map<String,Object> session=null;
+    private static Injector instance = null;
+    public Session session = null;
     public OauthConfig config = new OauthConfig();
-
     public Boolean sslVerification;
 
-    private static Injector instance = null;
-
-    public static Injector getInstance()
+    public static Injector getInstance ()
     {
-        if(instance == null)
+        if (instance == null)
         {
             instance = new Injector();
         }
         return instance;
     }
 
-    public void setInstance(Injector instance)
+    public void setInstance (Injector instance)
     {
         this.instance = instance;
     }
 
-    public HttpWrapper getRequest()
+    public HttpWrapper getRequest ()
     {
         return new HttpWrapper();
     }
 
-    public Object getSession()
+    public Session getSession ()
     {
         return this.session;
     }
-    public void setSession(Map<String,Object>  session)
+
+    public void setSession (Session session)
     {
         this.session = session;
     }
 
+    public OauthConfig getConfig ()
+    {
+        return config;
+    }
+
+    public void setConfig (OauthConfig config)
+    {
+        this.config = config;
+    }
+
+    public Boolean getSslVerification ()
+    {
+        return sslVerification;
+    }
+
+    public void setSslVerification (Boolean sslVerification)
+    {
+        this.sslVerification = sslVerification;
+    }
 }

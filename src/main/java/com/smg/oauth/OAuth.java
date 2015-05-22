@@ -3,6 +3,11 @@ package com.smg.oauth;
 
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
+import com.smg.oauth.config.*;
+import com.smg.oauth.constants.HttpVerbs;
+import com.smg.oauth.exceptions.NotAuthenticatedException;
+import com.smg.oauth.exceptions.NotInitializedException;
+import com.smg.oauth.http.HttpWrapper;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -15,7 +20,7 @@ import java.util.*;
  */
 public class OAuth
 {
-    public Properties properties = new Properties();
+    public com.smg.oauth.config.Properties properties = new com.smg.oauth.config.Properties();
 
     private Injector injector;
     private boolean initialized = false;
@@ -30,7 +35,7 @@ public class OAuth
         this.injector.sslVerification = sslVerification;
     }
 
-    public void setSession (Map<String, Object> session)
+    public void setSession (Session session)
     {
         this.injector.session = session;
     }
@@ -77,10 +82,10 @@ public class OAuth
 
     private void initSession ()
     {
-        this.injector.session = new HashMap<String, Object>();
-        OauthIO oauthIO = new OauthIO();
-        oauthIO.tokens = new LinkedList<String>();
-        this.injector.session.put("oauthio", oauthIO);
+        this.injector.setSession(new Session());
+        OAuthIO oauthIO = new OAuthIO();
+        oauthIO.setTokens(new LinkedList<String>());
+        this.injector.getSession().setOauthIO(oauthIO);
 
     }
 
@@ -88,12 +93,12 @@ public class OAuth
     {
         String uniqueToken = OAuthUtils.encryptKey(UUID.randomUUID().toString());
 
-        ((OauthIO) this.injector.session.get("oauthio")).tokens.push(uniqueToken);
+        this.injector.getSession().getOauthIO().getTokens().add(uniqueToken);
 
-        if (((OauthIO) this.injector.session.get("oauthio")).tokens.size() > 4)
+        if (this.injector.getSession().getOauthIO().getTokens().size() > 4)
         {
-
-            ((OauthIO) this.injector.session.get("oauthio")).tokens = (LinkedList<String>) ((OauthIO) this.injector.session.get("oauthio")).tokens.subList(0, 4);
+            List<String> subList = this.injector.getSession().getOauthIO().getTokens().subList(0, 4);
+            this.injector.getSession().getOauthIO().setTokens(subList);
 
         }
 
@@ -113,10 +118,10 @@ public class OAuth
 
             urlToRedirect = URLEncoder.encode(urlToRedirect, "UTF-8");
             String opts = URLEncoder.encode(state.toString(), "UTF-8");
-            location = this.injector.config.getOauthUrl() +
-                    this.injector.config.getOauthdBase()
+            location = this.injector.getConfig().getOauthUrl() +
+                    this.injector.getConfig().getOauthdBase()
                     + "/" + provider
-                    + "?k=" + this.injector.config.getAppKey()
+                    + "?k=" + this.injector.getConfig().getAppKey()
                     + "&opts=" + opts
                     + "&redirect_type=server&redirect_uri=" + urlToRedirect;
         }
@@ -140,17 +145,19 @@ public class OAuth
         try
         {
             Date date = new Date();
+
             credentials.put("refreshed", false);
+
             if ((credentials.has("refresh_token") && (credentials.has("expires") && date.getTime() > ((Date) credentials.get("expires")).getTime())) || force)
             {
                 HttpWrapper request = this.injector.getRequest();
 
-                String url = this.injector.config.getOauthUrl() + this.injector.config.getOauthdBase() + "/refresh_token/" + credentials.get("provider");
+                String url = this.injector.getConfig().getOauthUrl() + this.injector.getConfig().getOauthdBase() + "/refresh_token/" + credentials.get("provider");
 
                 Map<String, Object> fields = new HashMap<String, Object>();
                 fields.put("token", credentials.get("refresh_token").toString());
-                fields.put("key", this.injector.config.getAppKey());
-                fields.put("secret", this.injector.config.getAppSecret());
+                fields.put("key", this.injector.getConfig().getAppKey());
+                fields.put("secret", this.injector.getConfig().getAppSecret());
 
                 Map<String, String> headers = new HashMap<String, String>();
                 headers.put("Content-Type", "application/x-www-form-urlencoded");
@@ -178,7 +185,7 @@ public class OAuth
         return auth(provider, null);
     }
 
-    public RequestObject auth (String provider, Map<String, Object> options) throws NotInitializedException, NotAuthenticatedException
+    public RequestObject auth (String provider, OauthOptions options) throws NotInitializedException, NotAuthenticatedException
     {
         //JSONObject data;
         JSONObject credentials = null;
@@ -197,22 +204,22 @@ public class OAuth
                     data = oauthio.getJSONObject("data");
                     code = data.getString("code");
                 }*/
-                if (options.get("code") != null)
+                if (options.getCode() != null)
                 {
-                    code = options.get("code").toString();
+                    code = options.getCode().toString();
                 }
 
                 if (code != null && !code.isEmpty())
                 {
                     HttpWrapper request = this.injector.getRequest();
 
-                    String url = this.injector.config.getOauthUrl() + this.injector.config.getOauthdBase() + "/access_token";
+                    String url = this.injector.getConfig().getOauthUrl() + this.injector.getConfig().getOauthdBase() + "/access_token";
 
                     Map<String, Object> fields = new HashMap<String, Object>();
 
                     fields.put("code", code);
-                    fields.put("key", this.injector.config.getAppKey());
-                    fields.put("secret", this.injector.config.getAppSecret());
+                    fields.put("key", this.injector.getConfig().getAppKey());
+                    fields.put("secret", this.injector.getConfig().getAppSecret());
 
                     Map<String, String> headers = new HashMap<String, String>();
 
@@ -237,7 +244,8 @@ public class OAuth
 
                         if (credentials.has("provider"))
                         {
-                            ((OauthIO) this.injector.session.get("oauthio")).auth.put(credentials.get("provider").toString(), credentials);
+                            String prov = credentials.get("provider").toString();
+                            this.injector.getSession().getOauthIO().getAuth().put(prov, credentials);
                         }
                     }
 
@@ -247,23 +255,24 @@ public class OAuth
                     }
 
                 }
-                else if (options.get("credentials") != null)
+                else if (options.getCredentials() != null)
                 {
-                    credentials = (JSONObject) options.get("credentials");
+                    credentials = new JSONObject( options.getCredentials() );
                 }
             }
             else
             {
-                if (((OauthIO) this.injector.session.get("oauthio")).auth.get(provider) != null)
+                if (this.injector.getSession().getOauthIO().getAuth().get(provider) != null)
                 {
-                    credentials = (JSONObject) ((OauthIO) this.injector.session.get("oauthio")).auth.get(provider);
+                    credentials = new JSONObject(this.injector.getSession().getOauthIO().getAuth().get(provider));
                 }
                 else
                 {
                     throw new NotAuthenticatedException();
                 }
             }
-            Boolean forceRefresh = options.get("force_refresh") != null ? (Boolean) options.get("force_refresh") : false;
+
+            Boolean forceRefresh = options.isForceRefresh() != null ?  options.isForceRefresh() : false;
 
             credentials = this.refreshCredentials(credentials, forceRefresh);
 

@@ -1,4 +1,4 @@
-package com.smg.oauth;
+package com.smg.oauth.exceptions;
 
 /**
  * Created by eduardo on 23/01/15.

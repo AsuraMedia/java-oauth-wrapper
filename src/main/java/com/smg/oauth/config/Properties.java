@@ -1,4 +1,4 @@
-package com.smg.oauth;
+package com.smg.oauth.config;
 
 /**
  * Created by eduardo on 23/01/15.

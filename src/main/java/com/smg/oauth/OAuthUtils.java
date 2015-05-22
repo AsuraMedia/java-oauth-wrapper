@@ -1,5 +1,6 @@
 package com.smg.oauth;
 
+import com.smg.oauth.http.QueryStringBuilder;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
