@@ -1,4 +1,4 @@
-package com.smg.oauth.exceptions;
+package steel.dev.oauthio.wrapper.exceptions;
 
 /**
  * Created by eduardo on 23/01/15.
