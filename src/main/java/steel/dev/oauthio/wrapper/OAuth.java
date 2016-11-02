@@ -2,7 +2,12 @@ package steel.dev.oauthio.wrapper;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.util.*;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -51,15 +56,17 @@ public class OAuth
 
     this.injector.config.setOauthUrl(url);
 
-    if (base != null && !base.isEmpty() && !base.startsWith("/"))
+    if (base != null)
     {
-      base = "/" + base;
+      if (!base.startsWith("/"))
+      {
+        base = "/" + base;
+      }
+      if (base.equals("/"))
+      {
+        base = "";
+      }
     }
-    if (base != null && base.equalsIgnoreCase("/"))
-    {
-      base = "";
-    }
-
     this.injector.config.setOauthdBase(base);
   }
 
@@ -69,6 +76,15 @@ public class OAuth
     this.injector.config.setAppSecret(secret);
     this.initSession();
     this.initialized = true;
+
+  }
+
+  private void initSession()
+  {
+    this.injector.setSession(new Session());
+    final OAuthIO oauthIO = new OAuthIO();
+    oauthIO.setTokens(new LinkedList<String>());
+    this.injector.getSession().setOauthIO(oauthIO);
 
   }
 
@@ -82,42 +98,18 @@ public class OAuth
     return this.injector.config.getAppSecret();
   }
 
-  private void initSession()
-  {
-    this.injector.setSession(new Session());
-    final OAuthIO oauthIO = new OAuthIO();
-    oauthIO.setTokens(new LinkedList<String>());
-    this.injector.getSession().setOauthIO(oauthIO);
-
-  }
-
-  public String generateStateToken()
-  {
-    final String uniqueToken = OAuthUtils.encryptKey(UUID.randomUUID().toString());
-
-    this.injector.getSession().getOauthIO().getTokens().add(uniqueToken);
-
-    if (this.injector.getSession().getOauthIO().getTokens().size() > 4)
-    {
-      final List<String> subList =
-          this.injector.getSession().getOauthIO().getTokens().subList(0, 4);
-      this.injector.getSession().getOauthIO().setTokens(subList);
-
-    }
-
-    return uniqueToken;
-  }
-
   public String redirect(final String provider, final String url)
   {
     String location = "";
     try
     {
+
       String urlToRedirect = this.properties.getProtocol() + "://" + this.properties.getHost()
           + (!this.properties.getPort().isEmpty()
-              ? ":" + this.properties.getPort()
-              : "")
+             ? ":" + this.properties.getPort()
+             : "")
           + url;
+
       final String csrf = this.generateStateToken();
 
       final JSONObject state = new JSONObject();
@@ -125,11 +117,13 @@ public class OAuth
 
       urlToRedirect = URLEncoder.encode(urlToRedirect, "UTF-8");
       final String opts = URLEncoder.encode(state.toString(), "UTF-8");
+
       location = this.injector.getConfig().getOauthUrl() +
           this.injector.getConfig().getOauthdBase() + "/" + provider + "?k="
           + this.injector.getConfig()
-              .getAppKey()
+          .getAppKey()
           + "&opts=" + opts + "&redirect_type=server&redirect_uri=" + urlToRedirect;
+
     }
     catch (final UnsupportedEncodingException e)
     {
@@ -145,49 +139,20 @@ public class OAuth
     return location;
   }
 
-  public JSONObject refreshCredentials(JSONObject credentials, final boolean force)
+  public String generateStateToken()
   {
-    try
+    final String uniqueToken = OAuthUtils.encryptKey(UUID.randomUUID().toString());
+
+    this.injector.getSession().getOauthIO().getTokens().add(uniqueToken);
+
+    if (this.injector.getSession().getOauthIO().getTokens().size() > 4)
     {
-      final Date date = new Date();
-
-      credentials.put("refreshed", false);
-
-      if ((credentials.has("refresh_token")
-          && (credentials.has("expires") && date.getTime() > ((Date) credentials.get("expires"))
-              .getTime()))
-          || force)
-      {
-        final HttpWrapper request = this.injector.getRequest();
-
-        final String url = this.injector.getConfig().getOauthUrl()
-            + this.injector.getConfig().getOauthdBase() + "/refresh_token/" + credentials
-                .get("provider");
-
-        final Map<String, Object> fields = new HashMap<String, Object>();
-        fields.put("token", credentials.get("refresh_token").toString());
-        fields.put("key", this.injector.getConfig().getAppKey());
-        fields.put("secret", this.injector.getConfig().getAppSecret());
-
-        final Map<String, String> headers = new HashMap<String, String>();
-        headers.put("Content-Type", "application/x-www-form-urlencoded");
-        headers.put("accept", "application/json");
-
-        final JsonNode response =
-            request.makeRequest(url, HttpVerbs.POST, headers, null, fields, null).getBody();
-
-        final JSONObject refreshedCreds = response.getObject();
-        credentials = refreshedCreds;
-        credentials.put("refreshed", true);
-
-      }
+      final List<String> subList =
+          this.injector.getSession().getOauthIO().getTokens().subList(0, 4);
+      this.injector.getSession().getOauthIO().setTokens(subList);
 
     }
-    catch (final Exception e)
-    {
-      e.printStackTrace();
-    }
-    return credentials;
+    return uniqueToken;
   }
 
   public RequestObject auth(final String provider)
@@ -295,6 +260,51 @@ public class OAuth
 
       return requestObject;
     }
+  }
+
+  public JSONObject refreshCredentials(JSONObject credentials, final boolean force)
+  {
+    try
+    {
+      final Date date = new Date();
+
+      credentials.put("refreshed", false);
+
+      if ((credentials.has("refresh_token")
+          && (credentials.has("expires") && date.getTime() > ((Date) credentials.get("expires"))
+          .getTime()))
+          || force)
+      {
+        final HttpWrapper request = this.injector.getRequest();
+
+        final String url = this.injector.getConfig().getOauthUrl()
+            + this.injector.getConfig().getOauthdBase() + "/refresh_token/" + credentials
+            .get("provider");
+
+        final Map<String, Object> fields = new HashMap<String, Object>();
+        fields.put("token", credentials.get("refresh_token").toString());
+        fields.put("key", this.injector.getConfig().getAppKey());
+        fields.put("secret", this.injector.getConfig().getAppSecret());
+
+        final Map<String, String> headers = new HashMap<String, String>();
+        headers.put("Content-Type", "application/x-www-form-urlencoded");
+        headers.put("accept", "application/json");
+
+        final JsonNode response =
+            request.makeRequest(url, HttpVerbs.POST, headers, null, fields, null).getBody();
+
+        final JSONObject refreshedCreds = response.getObject();
+        credentials = refreshedCreds;
+        credentials.put("refreshed", true);
+
+      }
+
+    }
+    catch (final Exception e)
+    {
+      e.printStackTrace();
+    }
+    return credentials;
   }
 
 }
